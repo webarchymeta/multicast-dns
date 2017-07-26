@@ -114,14 +114,21 @@ Creates a new `mdns` instance. Options can contain the following
 ``` js
 {
   multicast: true // use udp multicasting
-  interface: '192.168.0.2' // explicitly specify a network interface. defaults to all
+  interface: '192.168.0.2' // explicitly specify a network interface.
+  interfaces: ['192.168.0.2','10.0.0.2'] // explicitly specify a set of network interfaces.
+  subnets: ['192.168.0.'], // specify a set of subnet interested, the current value represent 192.168.0.0/24
   port: 5353, // set the udp port
-  ip: '224.0.0.251', // set the udp ip
+  group_ip: '224.0.0.251', // set the udp multicast group ip
   ttl: 255, // set the multicast ttl
   loopback: true, // receive your own packets
   reuseAddr: true // set the reuseAddr option when creating the socket (requires node >=0.11.13)
+  use_group_ip: true // bind the multicasting server socket to the multicast group ip in non-Windows systems
+  client_only: true // do not initiate the dns server, use the client component only
 }
 ```
+
+If neighter `interface` nor `interface` is specified, the lib will generate a interface list by first enumerating all network interfaces found on the host. If `subnets` is a non-empty list, the interfaces used will be obtained by filtering the original list using the values in the `subnets`. If `subnets` is not defined or is empty, the original list will be used. If `interface` is defined, it is used as the sole interface used, regardless of the values of `interfaces` or `subnets`.
+If `interface` not defined but `interfaces` is defined, it is used as the list of interfaces used, regardless of the values of `subnets`.
 
 #### `mdns.on('query', (packet, rinfo))`
 
