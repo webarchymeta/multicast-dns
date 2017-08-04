@@ -3,7 +3,6 @@
 const
     packet = require('dns-packet'),
     dgram = require('dgram'),
-    thunky = require('thunky'),
     events = require('events'),
     os = require('os');
 
