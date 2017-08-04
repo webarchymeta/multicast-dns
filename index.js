@@ -234,7 +234,11 @@ module.exports = function (opts) {
         destroyed = true;
         if (!client_only) {
             interfaces.forEach(iip => {
-                socket.dropMembership(group_ip, iip);
+                try {
+                    socket.dropMembership(group_ip, iip);
+                } catch(ex) {
+
+                }
             });
             if (cb)
                 socket.once('close', cb);
@@ -242,7 +246,11 @@ module.exports = function (opts) {
         }
         sendSockets.forEach(s => {
             interfaces.forEach(iip => {
-                s.dropMembership(group_ip, iip);
+                try {
+                    s.dropMembership(group_ip, iip);
+                } catch(ex) {
+
+                }
             });
             if (cb)
                 s.once('close', cb);
