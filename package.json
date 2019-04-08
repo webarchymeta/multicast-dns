@@ -8,11 +8,11 @@
   },
   "bin": "cli.js",
   "dependencies": {
-    "dns-packet": "^1.0.1"
+    "dns-packet": "^5.2.1"
   },
   "devDependencies": {
-    "standard": "^5.4.1",
-    "tape": "^4.4.0"
+    "standard": "^12.0.1",
+    "tape": "^4.10.1"
   },
   "repository": {
     "type": "git",
@@ -34,9 +34,5 @@
     "discovery",
     "bonjour",
     "avahi"
-  ],
-  "coordinates": [
-    55.6465878,
-    12.5492251
   ]
 }
