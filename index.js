@@ -12,11 +12,13 @@ module.exports = function (opts) {
     const port = typeof opts.port === 'number' ? opts.port : 5353;
     const use_group_ip = opts.use_group_ip;
     const type = opts.type || 'udp4';
-    const group_ip = opts.group_ip || (type === 'udp4' ? '224.0.0.251' : 'FF02::FB');
+    const group_ip = opts.use_group_ip || opts.group_ip || (type === 'udp4' ? '224.0.0.251' : 'FF02::FB');
     const client_only = !!opts.client_only;
     const subnets = opts.subnets && opts.subnets.length > 0 ? opts.subnets : undefined;
     const sendSockets = [];
     const interfaces = [];
+
+    self.type = type;
 
     let destroyed = false;
 
@@ -47,10 +49,11 @@ module.exports = function (opts) {
             if (!subnets) {
                 let cnt = 0;
                 for (let i = 0; i < an1.length; i++) {
-                    if (an1[i] === an2[i])
+                    if (an1[i] === an2[i]) {
                         cnt++;
-                    else
+                    } else {
                         break;
+                    }
                 }
                 return cnt > 0;
             } else {
@@ -58,10 +61,11 @@ module.exports = function (opts) {
                     let cnt = 0;
                     const dns = sn.prefix.split('.').filter(n => !!n);
                     for (let i = 0; i < dns.length; i++) {
-                        if (dns[i] === an1[i] && an1[i] === an2[i])
+                        if (dns[i] === an1[i] && an1[i] === an2[i]) {
                             cnt++;
-                        else
+                        } else {
                             break;
+                        }
                     }
                     return {
                         match: cnt === dns.length,
@@ -72,8 +76,37 @@ module.exports = function (opts) {
                 return cnts.length > 0 && cnts[0].match;
             }
         } else {
-            //tmp
-            return true;
+            const an1 = addr1.split(':');
+            const an2 = addr2.split(':');
+            if (!subnets) {
+                let cnt = 0;
+                for (let i = 0; i < an1.length; i++) {
+                    if (an1[i] === an2[i]) {
+                        cnt++;
+                    } else {
+                        break;
+                    }
+                }
+                return cnt > 0;
+            } else {
+                const cnts = subnets.map((sn, idx) => {
+                    let cnt = 0;
+                    const dns = sn.prefix.split(':').filter(n => !!n);
+                    for (let i = 0; i < dns.length; i++) {
+                        if (dns[i] === an1[i] && an1[i] === an2[i]) {
+                            cnt++;
+                        } else {
+                            break;
+                        }
+                    }
+                    return {
+                        match: cnt === dns.length,
+                        i: idx,
+                        cnt: cnt
+                    };
+                }).filter(c => !!c.cnt).sort((a, b) => a.cnt > b.cnt ? -1 : a.cnt === b.cnt ? 0 : 1);
+                return cnts.length > 0 && cnts[0].match;
+            }
         }
     };
 
@@ -100,14 +133,16 @@ module.exports = function (opts) {
                 that.emit('warning', err);
                 return;
             }
-            if (message.type === 'response')
+            if (message.type === 'response') {
                 that.emit('response', message, rinfo);
+            }
         });
         s.on('error', err => {
-            if (err.code === 'EACCES' || err.code === 'EADDRINUSE')
+            if (err.code === 'EACCES' || err.code === 'EADDRINUSE') {
                 that.emit('error', err);
-            else
+            } else {
                 that.emit('warning', err);
+            }
         });
         s.bind(0, iip, () => {
             const adr = s.address();
@@ -141,11 +176,11 @@ module.exports = function (opts) {
             }
 
             that.emit('packet', message, rinfo);
-
-            if (message.type === 'query')
+            if (message.type === 'query') {
                 that.emit('query', message, rinfo);
-            if (message.type === 'response')
+            } else if (message.type === 'response') {
                 that.emit('response', message, rinfo);
+            }
         });
 
         socket.on('listening', () => {
@@ -173,10 +208,12 @@ module.exports = function (opts) {
     }
 
     that.send = (value, rinfo, cb) => {
-        if (typeof rinfo === 'function')
-            return that.send(value, null, rinfo)
-        if (destroyed)
+        if (typeof rinfo === 'function') {
+            return that.send(value, null, rinfo);
+        }
+        if (destroyed) {
             return cb && cb(new Error('sockets already closed'));
+        }
         const message = packet.encode(value);
         sendSockets.forEach(s => {
             if (!rinfo || domain_match(rinfo.address, s.local_ip)) {
@@ -201,12 +238,14 @@ module.exports = function (opts) {
     };
 
     that.query = (q, type, rinfo, cb) => {
-        if (typeof type === 'function')
+        if (typeof type === 'function') {
             return that.query(q, null, null, type);
-        if (typeof type === 'object' && type && type.port)
+        } else if (typeof type === 'object' && type && type.port) {
             return that.query(q, null, type, cb);
-        if (typeof rinfo === 'function')
+        }
+        if (typeof rinfo === 'function') {
             return that.query(q, type, null, rinfo);
+        }
         if (typeof q === 'string') {
             q = {
                 type: 'query',
@@ -221,38 +260,42 @@ module.exports = function (opts) {
                 questions: q
             };
         } else {
-            if (q.type !== 'query')
+            if (q.type !== 'query') {
                 q.type = 'query';
+            }
         }
         that.send(q, rinfo, cb);
     };
 
     that.destroy = cb => {
-        if (destroyed)
+        if (destroyed) {
             return cb && process.nextTick(cb);
+        }
         destroyed = true;
         if (!client_only) {
             interfaces.forEach(iip => {
                 try {
                     socket.dropMembership(group_ip, iip);
-                } catch(ex) {
+                } catch (ex) {
 
                 }
             });
-            if (cb)
+            if (cb) {
                 socket.once('close', cb);
+            }
             socket.close();
         }
         sendSockets.forEach(s => {
             interfaces.forEach(iip => {
                 try {
                     s.dropMembership(group_ip, iip);
-                } catch(ex) {
+                } catch (ex) {
 
                 }
             });
-            if (cb)
+            if (cb) {
                 s.once('close', cb);
+            }
             s.close();
         });
         that.emit('shutdown');
