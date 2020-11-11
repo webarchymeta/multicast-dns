@@ -18,7 +18,7 @@ module.exports = function (opts) {
     const sendSockets = [];
     const interfaces = [];
 
-    self.type = type;
+    that.type = type;
 
     let destroyed = false;
 
