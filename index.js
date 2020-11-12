@@ -27,7 +27,7 @@ module.exports = function (opts) {
         const ip_family = type === 'udp4' ? 'ipv4' : 'ipv6';
         Object.keys(ifaces).forEach(key => {
             ifaces[key].forEach(ip => {
-                if (!ip.internal && ip_family.toLowerCase() === ip.family.toLowerCase()) {
+                if (!ip.internal && ip_family.toLowerCase() === ip.family.toLowerCase() && ip.address.indexOf('fe') !== 0) {
                     if (!subnets || subnets.find(sn => ip.address.indexOf(sn.prefix) === 0)) {
                         interfaces.push(ip.address);
                     }
@@ -124,7 +124,7 @@ module.exports = function (opts) {
             }
             this.setMulticastTTL(opts.ttl || 5);
             this.setMulticastLoopback(!!opts.loopback);
-            that.emit('ready');
+            that.emit('sender-ready', iip);
         }.bind(s));
         s.on('message', (message, rinfo) => {
             try {
@@ -152,13 +152,13 @@ module.exports = function (opts) {
         sendSockets.push(s);
     });
 
-    const socket = !client_only ? dgram.createSocket({
+    const socket = !client_only && interfaces.length > 0 ? dgram.createSocket({
         type: type,
         reuseAddr: opts.reuseAddr !== false,
         toString: () => type
     }) : undefined;
 
-    if (!client_only) {
+    if (!client_only && interfaces.length > 0) {
 
         socket.on('error', err => {
             if (err.code === 'EACCES' || err.code === 'EADDRINUSE')
@@ -194,16 +194,13 @@ module.exports = function (opts) {
             }
             socket.setMulticastTTL(opts.ttl || 5);
             socket.setMulticastLoopback(!!opts.loopback);
+            that.emit('ready');
         });
 
         if (os.platform() === 'win32' || !use_group_ip || !opts.multicast) {
-            socket.bind(port || 0, () => {
-                that.emit('ready');
-            });
+            socket.bind(port || 0);
         } else {
-            socket.bind(port || 0, group_ip, () => {
-                that.emit('ready');
-            });
+            socket.bind(port || 0, group_ip);
         }
     }
 
@@ -272,7 +269,7 @@ module.exports = function (opts) {
             return cb && process.nextTick(cb);
         }
         destroyed = true;
-        if (!client_only) {
+        if (!client_only && interfaces.length > 0) {
             interfaces.forEach(iip => {
                 try {
                     socket.dropMembership(group_ip, iip);
